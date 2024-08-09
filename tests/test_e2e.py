@@ -17,14 +17,15 @@ class TestOne(BaseClass):
         wait = WebDriverWait(self.driver, 10)
         pmoIcon = PMOIcon(self.driver)
         pmoIcon.PmIcon().click()
+        time.sleep(3)
         self.driver.implicitly_wait(2)
         self.driver.switch_to.frame("undefined")
         self.driver.implicitly_wait(5)
 # Adding new client
         self.driver.find_element(By.XPATH,"//img[@title='Client Configuration']").click()
         self.driver.find_element(By.XPATH,"//button[normalize-space()='Add Client']").click()
-        self.driver.find_element(By.XPATH,"//input[@placeholder='Enter Client Name']").send_keys("Test Client567")
-        self.driver.find_element(By.XPATH,"//input[@placeholder='Select Region']").send_keys("north")
+        self.driver.find_element(By.XPATH,"//input[@placeholder='Enter Client Name']").send_keys("Test Client789")
+        self.driver.find_element(By.XPATH,"//input[@placeholder='Select Region']").send_keys("west")
         self.driver.find_element(By.XPATH, "//input[@placeholder='Select Country']").send_keys("United States")
         self.driver.find_element(By.XPATH, "//textarea[@placeholder='Enter Address']").send_keys("Test Address")
         self.driver.find_element(By.XPATH, "//input[@placeholder='Enter City']").send_keys("Test City")
@@ -36,7 +37,7 @@ class TestOne(BaseClass):
 # Assigning new client that created above to the new project
         self.driver.find_element(By.XPATH, "//img[@title='Project Configuration']").click()
         self.driver.find_element(By.XPATH, "//button[normalize-space()='Add Project']").click()
-        self.driver.find_element(By.XPATH, "//input[@type='text']").send_keys("Test Client567")
+        self.driver.find_element(By.XPATH, "//input[@type='text']").send_keys("Test Client789")
         action = ActionChains(self.driver)
         body1 = self.driver.find_element(By.XPATH, "//body")
         action.move_to_element(body1).click().perform()
@@ -72,6 +73,6 @@ class TestOne(BaseClass):
         date_to_select.click()
         add = self.driver.find_element(By.XPATH, "//button[@type='submit']")
         add.click()
-#
-#
+
+
 
