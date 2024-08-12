@@ -1,3 +1,4 @@
+import os
 import time
 
 import pytest
@@ -14,13 +15,14 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 class TestTwo(BaseClass):
 
-    def test_resourcereports(self):
+    def test_resourceReports(self):
         wait = WebDriverWait(self.driver, 10)
         pmoIcon = PMOIcon(self.driver)
         pmoIcon.PmIcon().click()
         self.driver.implicitly_wait(2)
         self.driver.switch_to.frame("undefined")
-        self.driver.implicitly_wait(5)
+        time.sleep(3)
+        self.driver.implicitly_wait(15)
         resReport = ResourceReports(self.driver)
         resReport.ResReport().click()
         to_date = wait.until(
@@ -29,16 +31,22 @@ class TestTwo(BaseClass):
 
         )
         to_date.click()
-        date_to_select = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='August 9, 2024']")))
+        date_to_select = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='August 15, 2024']")))
         date_to_select.click()
+        time.sleep(3)
         expoReport = ResourceReports(self.driver)
         expoReport.ExpoReport().click()
         time.sleep(3)
         download_dir = r"C:\Users\Anupama Saranu\PycharmProjects\PythonSelFramework"
-        file_path = f"{download_dir}\\exported_file.xlsx"  # Adjust the filename if needed
+        file_name = "Project Resource Reports.xlsx"
+        file_path = os.path.join(download_dir, file_name)
+        body = self.driver.find_element(By.XPATH, "//body")
+        action = ActionChains(self.driver)
+        action.move_to_element(body).click().perform()
 
         # Read data from the file
         file_data = read_excel(file_path)
+        print(file_data)
 
         # Get data from the web application
         web_data = get_web_data(self.driver)
