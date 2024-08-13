@@ -8,6 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from datetime import datetime
 
+
 @pytest.mark.usefixtures("setup")
 class BaseClass:
     pass
@@ -15,8 +16,14 @@ class BaseClass:
 
 def convert_excel_data(excel_value, index):
     """Converts Excel data to match the format of the Web data."""
-    if index == 0 or index == 8:  # Convert float-like numbers to integers
-        return str(int(float(excel_value)))  # Convert to integer-like string, e.g., '55.0' -> '55'
+    if index == 0 or index == 8:  # Convert float-like numbers to integers or handle special case
+        if excel_value == 0 and index == 8:
+            print("Converting '0' to '-'")  # Debugging line
+            return "-"  # Special case for index 8
+        try:
+            return str(int(float(excel_value)))  # Convert to integer-like string, e.g., '55.0' -> '55'
+        except ValueError:
+            return excel_value  # Return as is if conversion fails
 
     elif index == 2:  # Convert 'true'/'false' to 'active'/'yes'
         if isinstance(excel_value, bool):
@@ -37,7 +44,7 @@ def convert_excel_data(excel_value, index):
     elif index == 4 or index == 7:  # Convert 'none' values to '-'
         if excel_value is None:
             return "-"
-        return "-" if excel_value.lower() == "none" else excel_value
+        return "-" if excel_value.lower() == "none" else datetime.strptime(excel_value, "%d-%m-%Y").strftime("%d-%b-%Y").lower()
 
     return excel_value  # Return the value unchanged if no conversion is needed
 
@@ -47,7 +54,12 @@ def read_excel(file_path):
     sheet = workbook.active
 
     data = []
+    max_rows = 12  # Define the maximum number of rows to read
+    #for i, row in enumerate(sheet.iter_rows(min_row=5, values_only=True)):
     for row in sheet.iter_rows(min_row=5, values_only=True):
+        # if i >= max_rows:  # Stop after reading 10 rows
+        #     break
+        # Apply conversion to each cell in the row
         # Apply conversion to each cell in the row
         modified_row = [convert_excel_data(cell, index) for index, cell in enumerate(row)]
         data.append(modified_row)
@@ -76,39 +88,54 @@ def read_excel(file_path):
 
 
 def get_web_data(driver):
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 20)
     data = []
 
     while True:
-        rows = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//table//tr")))
-
-        for row in rows[1:]:  # Skipping the header row
-            cols = row.find_elements(By.TAG_NAME, "td")
-            data.append([col.text.strip() for col in cols[1:]])
-            print("Reached the try block")
-            # web_row = [convert_web_data(col.text.strip(), index) for index, col in enumerate(cols[1:])]
-            # data.append(web_row)
-        # Check if there's a "Next" button or similar pagination control
-        print("Reached the try block")  # Debugging print before try block
         try:
-            next_button = wait.until(
-                EC.element_to_be_clickable((By.XPATH, "//a[aria-label='Next page']"))
-            )
-            # Scroll to the "Next" button using ActionChains
-            actions = ActionChains(driver)
-            actions.move_to_element(next_button).perform()
-            print("Scrolled to the Next button")  # Debugging print
+            # Locate all rows in the table
+            rows = wait.until(EC.presence_of_all_elements_located(
+                (By.XPATH, "//tbody[@class='table-body ng-star-inserted']/tr")
+            ))
+            print(f"Found {len(rows)} rows on the current page")
 
-            # Click the "Next" button
-            next_button.click()
-            print("Clicked Next button")  # Debugging print
+            # Extract data from each row
+            page_data = []
+            for row in rows[0:]:  # Skipping the header row
+                cols = row.find_elements(By.TAG_NAME, "td")
+                row_data = [col.text.strip() for col in cols[1:]]  # Adjust index as per your table structure
+                page_data.append(row_data)
 
-            # Wait until the rows are stale, meaning the new page has loaded
-            wait.until(EC.staleness_of(rows[0]))
-            print("Page loaded, moving to next")  # Debugging print
+            data.extend(page_data)
+            print(f"Data from current page: {page_data}")
+
+            # Attempt to locate and click the "Next" button
+            next_button = driver.find_elements(By.XPATH, "//a[@aria-label='Next page' and contains(text(),'Next')]")
+            if next_button:
+                actions = ActionChains(driver)
+                actions.move_to_element(next_button[0]).perform()
+                print("Scrolled to the Next button")
+
+                # Using JavaScript to click the button
+                driver.execute_script("arguments[0].click();", next_button[0])
+                print("Clicked Next button using JavaScript")
+
+                # Wait for the rows to become stale (i.e., the page changes)
+                wait.until(EC.staleness_of(rows[0]))
+                print("Old page rows became stale, waiting for new rows to load")
+
+                # # Wait for new rows to load
+                # rows = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//table//tr")))
+                # print(f"New rows are present: {len(rows)}")
+
+                # Optional: Add a slight delay to ensure data is fully loaded
+                time.sleep(2)  # Adjust this delay based on your page load speed
+            else:
+                print("No 'Next' button found, ending pagination")
+                break
+
         except Exception as e:
-            # No more pages or error occurred
-            print(f"Pagination ended or an error occurred: {e}")
+            print(f"An error occurred: {e}")
             break
 
     return data
@@ -118,17 +145,4 @@ def normalize_data(data):
     return [[str(cell).strip().lower() for cell in row] for row in data]
 
 
-def compare_data(file_data, web_data):
-    file_data_normalized = normalize_data(file_data)
-    web_data_normalized = normalize_data(web_data)
 
-    if file_data_normalized == web_data_normalized:
-        print("The data in the file matches the data on the web application.")
-    else:
-        print("The data in the file does not match the data on the web application.")
-        print("File Data:")
-        for row in file_data_normalized:
-            print(row)
-        print("Web Data:")
-        for row in web_data_normalized:
-            print(row)

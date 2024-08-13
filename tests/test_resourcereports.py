@@ -7,7 +7,7 @@ from selenium.webdriver.support.select import Select
 
 from pageObjects.PMOIcon import PMOIcon
 from pageObjects.ResourceReports import ResourceReports
-from utilities.BaseClass import BaseClass, read_excel, get_web_data, compare_data
+from utilities.BaseClass import BaseClass, read_excel, get_web_data, normalize_data
 from selenium.webdriver import ActionChains
 from selenium.webdriver.support import expected_conditions as EC, expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
@@ -50,6 +50,11 @@ class TestTwo(BaseClass):
 
         # Get data from the web application
         web_data = get_web_data(self.driver)
+        print(web_data)
+
+        # Normalize the data for comparison if needed
+        file_data_normalized = normalize_data(file_data)
+        web_data_normalized = normalize_data(web_data)
 
         # Compare data
-        compare_data(file_data, web_data)
+        assert file_data_normalized == web_data_normalized, "Data from the file does not match the web data"
